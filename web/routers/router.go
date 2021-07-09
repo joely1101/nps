@@ -17,10 +17,12 @@ func Init() {
 		)
 		beego.AddNamespace(ns)
 	} else {
-		beego.Router("/", &controllers.IndexController{}, "*:Index")
+		//beego.Router("/", &controllers.IndexController{}, "*:Index")
+		beego.Router("/", &controllers.DeviceController{}, "*:Dashboard")
 		beego.AutoRouter(&controllers.IndexController{})
 		beego.AutoRouter(&controllers.LoginController{})
 		beego.AutoRouter(&controllers.ClientController{})
 		beego.AutoRouter(&controllers.AuthController{})
+		beego.AutoRouter(&controllers.DeviceController{})
 	}
 }

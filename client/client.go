@@ -17,8 +17,17 @@ import (
 	"ehang.io/nps/lib/config"
 	"ehang.io/nps/lib/conn"
 	"ehang.io/nps/lib/crypt"
+	"github.com/joely1101/gowol"
+	"strings"
+	"github.com/joely1101/arp"
+	"log"
+	"encoding/binary"
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"ehang.io/nps/lib/file"
 )
-
 type TRPClient struct {
 	svrAddr        string
 	bridgeConnType string
@@ -31,6 +40,7 @@ type TRPClient struct {
 	cnf            *config.Config
 	disconnectTime int
 	once           sync.Once
+	Scaniface      string
 }
 
 //new client
@@ -80,12 +90,48 @@ retry:
 		go heathCheck(s.cnf.Healths, s.signal)
 	}
 	NowStatus = 1
+	if s.Scaniface != ""{
+		go s.arpscan()
+	}else{
+		logs.Warn("ARP monitor disabled")
+	}
 	//msg connection, eg udp
 	s.handleMain()
 }
+func processCmdFromserver(cmdall string){
+	//sendmagic
+	//format: string_cmd:
+	//logs.Warn("processCmdFromserver  msg %s",cmdall)
+	argv:=strings.SplitN(cmdall,":",2)
+    cmd:=argv[0];
+	if cmd == ""{
+		logs.Warn("invlaid command: %s",cmdall)
+		return
+	}
+	if argv[1] == ""{
+		logs.Warn("invlaid paramter %s",cmdall)	
+		return
+	}
+	param:=argv[1]
+	switch cmd {
+		//format wol:00:11:22:33:44:55 00:11:22:33:44:52 ...
+		case "wol":
+			param2:=strings.Split(param," ");
+			for i := range param2 {
+				logs.Warn("Send magic packet  to %s",param2[i])
+				if packet, err := gowol.NewMagicPacket(param2[i]); err == nil {
+					//packet.Send("255.255.255.255")          // send to broadcast
+					packet.SendPort("255.255.255.255", "7") // specify receiving port
+				}
+			}
+		default:
+			logs.Warn("Unknow command %s",cmd)
+	}
 
+}
 //handle main connection
 func (s *TRPClient) handleMain() {
+	
 	for {
 		flags, err := s.signal.ReadFlag()
 		if err != nil {
@@ -113,6 +159,15 @@ func (s *TRPClient) handleMain() {
 				}
 				go s.newUdpConn(localAddr, string(lAddr), string(pwd))
 			}
+		case common.STRING_COMMAND:
+			msg, err := s.signal.GetShortLenContent()
+			//logs.Warn("WOL_COMMAND  msg %s",msg)
+			if err != nil {
+				logs.Warn(err)
+				return
+			}
+			processCmdFromserver(string(msg))
+
 		}
 	}
 	s.Close()
@@ -141,7 +196,7 @@ func (s *TRPClient) newUdpConn(localAddr, rAddr string, md5Password string) {
 		}
 		if udpTunnel.RemoteAddr().String() == string(remoteAddress) {
 			conn.SetUdpSession(udpTunnel)
-			logs.Trace("successful connection with client ,address %s", udpTunnel.RemoteAddr().String())
+			logs.Info("successful connection with client ,address %s", udpTunnel.RemoteAddr().String())
 			//read link info from remote
 			conn.Accept(nps_mux.NewMux(udpTunnel, s.bridgeConnType, s.disconnectTime), func(c net.Conn) {
 				go s.handleChan(c)
@@ -213,7 +268,7 @@ func (s *TRPClient) handleChan(src net.Conn) {
 		logs.Warn("connect to %s error %s", lk.Host, err.Error())
 		src.Close()
 	} else {
-		logs.Trace("new %s connection with the goal of %s, remote address:%s", lk.ConnType, lk.Host, lk.RemoteAddr)
+		logs.Warn("new %s connection with the goal of %s, remote address:%s", lk.ConnType, lk.Host, lk.RemoteAddr)
 		conn.CopyWaitGroup(src, targetConn, lk.Crypt, lk.Compress, nil, nil, false, nil)
 	}
 }
@@ -308,4 +363,270 @@ func (s *TRPClient) closing() {
 	if s.ticker != nil {
 		s.ticker.Stop()
 	}
+	
+}
+
+
+
+//var arpChannel chan arp.MACEntry
+func (s *TRPClient) arpscan() {
+	arp.Debug = false
+	NIC := s.Scaniface
+	//var err error
+	HomeLAN, HostMAC, err := getNICInfo(NIC)
+	if err != nil {
+		log.Print("error cannot get host ip and mac ", err)
+		return
+
+	}
+	HostIP:=HomeLAN.IP
+	bits,_:=HomeLAN.Mask.Size()
+	if bits < 24{
+		HomeLAN.Mask=net.CIDRMask(24,32)
+		logs.Warn("Subnet to large, use 24 bits only")
+	}
+	//log.Print(" Home LAN: ", HomeLAN)
+	HomeLAN.IP=HostIP.Mask(HomeLAN.Mask)
+	//HomeLAN := net.IPNet{IP: net.IPv4(HostIP[0], HostIP[1], HostIP[2], 0), Mask: net.CIDRMask(mask, 32)}
+	//HomeRouterIP := net.ParseIP(*defaultGw)
+	//if HomeRouterIP == nil {
+	//	HomeRouterIP, err = getLinuxDefaultGateway()
+	//}
+	HomeRouterIP, err := getLinuxDefaultGateway()
+	if err != nil {
+		log.Fatal("cannot get default gateway ", err)
+	}
+	logs.Info("Scan on %s IP %s/%s gateway:%s ", NIC,HostIP.String(),net.IP(HomeLAN.Mask).String(),net.IP(HomeRouterIP).String())
+    
+retry:
+	if CloseClient {
+		return
+	}
+	NowStatus = 0
+	ct, err := NewConn(s.bridgeConnType, s.vKey, s.svrAddr, common.WORK_CMD_RPC, s.proxyUrl)
+	logs.Info("new Control session for RPC ...")
+	if err != nil {
+		logs.Error("The connection server failed and will be reconnected in five seconds, error", err.Error())
+		time.Sleep(time.Second * 5)
+		goto retry
+	}
+	if ct == nil {
+		logs.Error("Error data from server, and will be reconnected in five seconds")
+		time.Sleep(time.Second * 5)
+		goto retry
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	//ctx, _ := context.WithCancel(context.Background())
+	config := arp.Config{
+		NIC:     NIC,
+		HostMAC: HostMAC, HostIP: HostIP,
+		RouterIP: HomeRouterIP, HomeLAN: HomeLAN,
+		ProbeInterval:           time.Second * 60,
+		FullNetworkScanInterval: time.Minute * 5,
+		PurgeDeadline:           0}
+	c, err := arp.New(config)
+	if err != nil {
+		log.Fatal("error connection to websocket server", err)
+	}
+	go c.ListenAndServe(ctx)
+
+	arpChannel := make(chan arp.MACEntry, 16)
+	c.AddNotificationChannel(arpChannel)
+	go arpNotification(arpChannel,ct,HomeLAN)
+   //wait if client if stop
+   for{
+	if CloseClient {
+		break
+	}
+	time.Sleep(time.Second * 5)
+   }
+   close(arpChannel)
+   cancel()
+   c.Close()
+}
+type portlist struct {
+    ports []int
+}
+
+func tcpscanThenSend(entry file.ARPEntry,ports portlist,signal *conn.Conn){
+	ipstr:=entry.IP
+	scanport := []int{22,23,80,443,8080}
+	//scan tcp port 21,22,80,443
+	for _,num := range scanport{
+		address := fmt.Sprintf("%s:%d",ipstr,num)
+
+		conn, err := net.DialTimeout("tcp", address,2*time.Second)
+		if err != nil {
+			// either the port is filtered or closed
+			continue
+		}
+		conn.Close()
+		ports.ports=append(ports.ports,num)
+	}
+	entry.Openport=ports.ports
+	jsondata, _ := json.Marshal(entry)
+	signal.Write([]byte(common.STRING_COMMAND))
+	alldata:="macentry:"+string(jsondata)
+	signal.WriteLenContent([]byte(alldata))
+}
+
+func arpNotification(arpChannel chan arp.MACEntry,signal    *conn.Conn,lan net.IPNet) {
+	openportlist := make(map[string]portlist)
+	for {
+		select {
+		case MACEntry,more := <-arpChannel:
+			if !more{
+				return
+			}
+			if !lan.Contains(MACEntry.IP()){
+				continue
+			}
+			ipstr:=MACEntry.IP().String()
+			if MACEntry.Online{
+                v,found:=openportlist[ipstr]
+				if !found{
+					Entry := file.ARPEntry {
+						MAC : MACEntry.MAC.String(),
+						IP  : MACEntry.IP().String(),
+						Online : MACEntry.Online}
+					go tcpscanThenSend(Entry,v,signal)
+					continue
+				}else{
+					//logs.Info("%s not update %v\n",ipstr,v)
+				}
+			}else{
+				delete(openportlist,ipstr)
+				//logs.Info("delete %s port list\n",ipstr)
+			}
+			Entry := file.ARPEntry {
+				MAC : MACEntry.MAC.String(),
+                IP  : MACEntry.IP().String(),
+				Online : MACEntry.Online}
+			
+			jsondata, _ := json.Marshal(Entry)
+			//fmt.Println(string(jsondata))
+			//fmt.Println("write command")
+			signal.Write([]byte(common.STRING_COMMAND))
+			alldata:="macentry:"+string(jsondata)
+			//fmt.Println(alldata)
+			signal.WriteLenContent([]byte(alldata))
+	        //fmt.Println(string(jsondata))
+			//log.Printf("xxxx notification got ARP MACEntry for %s", MACEntry)
+		}
+	}
+}
+/*
+func getMAC(c *arp.Handler, text string) (arp.MACEntry, error) {
+	if len(text) <= 3 {
+		return arp.MACEntry{}, fmt.Errorf("Invalid MAC")
+	}
+	mac, err := net.ParseMAC(text[2:])
+	if err != nil {
+		return arp.MACEntry{}, fmt.Errorf("Invalid MAC: %w", err)
+	}
+
+	entry, found := c.FindMAC(mac)
+	if !found {
+		return arp.MACEntry{}, fmt.Errorf("MAC not found")
+	}
+	return entry, nil
+}
+*/
+func getNICInfo(nic string) (ip net.IPNet, mac net.HardwareAddr, err error) {
+
+	//all, err := net.Interfaces()
+	//for _, v := range all {
+		//log.Print("interface name ", v.Name, v.HardwareAddr.String())
+	//}
+	ifi, err := net.InterfaceByName(nic)
+	if err != nil {
+		log.Printf("NIC cannot open nic %s error %s ", nic, err)
+		return ip, mac, err
+	}
+
+	mac = ifi.HardwareAddr
+
+	addrs, err := ifi.Addrs()
+	if err != nil {
+		log.Printf("NIC cannot get addresses nic %s error %s ", nic, err)
+		return ip, mac, err
+	}
+
+	for _,a := range addrs {
+		switch v := a.(type) {
+		case *net.IPNet:
+			ip4:=*v
+			if ip4.IP.To4() != nil {
+				//fmt.Printf("%v : %s [%v/%v]\n", ifi.Name, v, v.IP, v.Mask)
+				ip=*v
+				break
+			}
+			
+		}
+	}
+/*
+	if ip == nil || ip.Equal(net.IPv4zero) {
+		err = fmt.Errorf("NIC cannot find IPv4 address list - is %s up?", nic)
+		log.Print(err)
+		return ip, mac, err
+	}
+*/
+	//log.Printf("NIC successfull acquired host nic information mac=%s ip=%v", mac, ip)
+	return ip, mac, err
+}
+
+const (
+	netfile  = "/proc/net/route"
+	line  = 1    // line containing the gateway addr. (first line: 0)
+	sep   = "\t" // field separator
+	field = 2    // field containing hex gateway address (first field: 0)
+)
+
+// NICDefaultGateway read the default gateway from linux route file
+//
+// file: /proc/net/route file:
+//   Iface   Destination Gateway     Flags   RefCnt  Use Metric  Mask
+//   eth0    00000000    C900A8C0    0003    0   0   100 00000000    0   00
+//   eth0    0000A8C0    00000000    0001    0   0   100 00FFFFFF    0   00
+//
+func getLinuxDefaultGateway() (gw net.IP, err error) {
+
+	file, err := os.Open(netfile)
+	if err != nil {
+		log.Print("NIC cannot open route file ", err)
+		return net.IPv4zero, err
+	}
+	defer file.Close()
+
+	ipd32 := net.IP{}
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+
+		// jump to line containing the gateway address
+		for i := 0; i < line; i++ {
+			scanner.Scan()
+		}
+
+		// get field containing gateway address
+		tokens := strings.Split(scanner.Text(), sep)
+		gatewayHex := "0x" + tokens[field]
+
+		// cast hex address to uint32
+		d, _ := strconv.ParseInt(gatewayHex, 0, 64)
+		d32 := uint32(d)
+
+		// make net.IP address from uint32
+		ipd32 = make(net.IP, 4)
+		binary.LittleEndian.PutUint32(ipd32, d32)
+		//fmt.Printf("NIC default gateway is %T --> %[1]v\n", ipd32)
+
+		// format net.IP to dotted ipV4 string
+		//ip := net.IP(ipd32).String()
+		//fmt.Printf("%T --> %[1]v\n", ip)
+
+		// exit scanner
+		break
+	}
+	return ipd32, nil
 }

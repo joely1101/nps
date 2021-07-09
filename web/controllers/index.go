@@ -6,6 +6,8 @@ import (
 	"ehang.io/nps/server/tool"
 
 	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
+//	"ehang.io/nps/lib/common"
 )
 
 type IndexController struct {
@@ -181,13 +183,6 @@ func (s *IndexController) Edit() {
 	}
 }
 
-func (s *IndexController) Stop() {
-	id := s.GetIntNoErr("id")
-	if err := server.StopServer(id); err != nil {
-		s.AjaxErr("stop error")
-	}
-	s.AjaxOk("stop success")
-}
 
 func (s *IndexController) Del() {
 	id := s.GetIntNoErr("id")
@@ -196,13 +191,34 @@ func (s *IndexController) Del() {
 	}
 	s.AjaxOk("delete success")
 }
-
+ 
 func (s *IndexController) Start() {
 	id := s.GetIntNoErr("id")
+	logs.Warn("Startwol to %v", id)
 	if err := server.StartTask(id); err != nil {
 		s.AjaxErr("start error")
 	}
-	s.AjaxOk("start success")
+	s.AjaxOk("start success222")
+}
+/* 
+func (s *IndexController) Sendwol() {
+	id := s.GetIntNoErr("id")
+	cid := s.GetIntNoErr("cid")
+	logs.Warn("SendWol to %v cid=%d", id,cid)
+	if  ok := server.Bridge.SendCmd2Client(cid,common.WOL_COMMAND,"1234"); ok != nil {
+		s.AjaxErr("Send fail")
+		return
+	} 
+	s.AjaxOk("start success222")
+}
+*/
+func (s *IndexController) Stop() {
+	id := s.GetIntNoErr("id")
+	logs.Warn("Stopwol to %v", id)
+	if err := server.StopServer(id); err != nil {
+		s.AjaxErr("stop xxx error")
+	}
+	s.AjaxOk("stop xxx success")
 }
 
 func (s *IndexController) HostList() {

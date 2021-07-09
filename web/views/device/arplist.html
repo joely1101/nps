@@ -1,0 +1,388 @@
+<div class="wrapper wrapper-content animated fadeInRight">
+
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="ibox float-e-margins">
+                <div class="ibox-title">
+                    <h5 langtag="page-clientlist"></h5>
+
+                    <div class="ibox-tools">
+                        <a class="collapse-link">
+                            <i class="fa fa-chevron-up"></i>
+                        </a>
+                        <a class="close-link">
+                            <i class="fa fa-times"></i>
+                        </a>
+                    </div>
+                </div>
+            <div class="content">
+            {{if eq true .isAdmin}}
+
+                <div class="table-responsive">
+                    <div id="toolbar">
+                        
+                    </div>
+                    <table id="taskList_table" class="table-striped table-hover" data-mobile-responsive="true"></table>
+                </div>
+            </div>
+            {{end}}
+                <div class="ibox-content">
+
+                    <table id="table"></table>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function submitformBGandRefresh(tid,action, url, postdata) {
+        postsubmit = false;
+        switch (action) {
+            case 'start':
+            case 'stop':
+            case 'delete':
+                var langobj = languages['content']['confirm'][action];
+                action = (langobj[languages['current']] || langobj[languages['default']] || 'Are you sure you want to ' + action + ' it?');
+                if (! confirm(action)) return;
+                postsubmit = true;
+            case 'add':
+            case 'edit':
+                $.ajax({
+                    type: "POST",
+                    url: url,
+                    data: postdata,
+                    success: function (res) {
+                        alert(langreply(res.msg));
+                        if (res.status) {
+                            //if (postsubmit) {document.location.reload();}else{history.back(-1);}
+                            $('#detailTable'+tid).bootstrapTable('refresh')
+                            
+                        }
+                    }
+                });
+        }
+    }
+    function gotourl(url)
+    {
+        location.href=url
+    }
+    function connectdevice(port,name) {
+        var href=""
+        var host = window.location.hostname
+        if(name == "ssh"){
+            href="https://"+host+":2222/ssh/host/"+ host +"?port="+port;
+        }
+        else if (name == "http"){
+            href="http://"+ host +":"+port;
+        }
+        else if (name == "https"){
+            href="https://"+ host +":"+port;
+        }
+        else {
+            alert("Please connect "+ host+":"+port + " by correct application");
+            return
+        }
+        window.open(href, '_blank', 'toolbar=yes, width=1300, height=900');
+    }
+    function AddandRun(name,cid,target,mac)
+    {
+        postdata="NoSameTarget=1&type=tcp&client_id="+cid+"&remark="+name+"&target="+target+"&macaddr="+mac + "&port=0"
+        $.ajax({
+            type: "POST",
+            url: "/device/addrule",
+            data: postdata,
+            success: function (res) {
+                msg=res.msg
+                port=msg.split("=")
+                if(isNaN(port[1])){
+                    alert("Action Failed");    
+                }
+                //alert("Action success, goto access device");
+                connectdevice(port[1],name)
+            }
+	    });
+    }
+    
+    /*bootstrap table*/
+    $('#table').bootstrapTable({
+        toolbar: "#toolbar",
+        method: 'post', // 服务器数据的请求方式 get or post
+        url: "{{.web_base_url}}/device/list", // 服务器数据的加载地址
+        contentType: "application/x-www-form-urlencoded",
+        striped: false, // 设置为true会有隔行变色效果
+        search: true,
+        showHeader: true,
+        showColumns: true,
+        showRefresh: true,
+        pagination: true,//分页
+        sidePagination: 'server',//服务器端分页
+        pageNumber: 1,
+        pageList: [5, 10, 20, 50],//分页步进值
+        detailView: true,
+        smartDisplay: true, // 智能显示 pagination 和 cardview 等
+        onExpandRow: function () {$('body').setLang ('.detail-view');},
+        onPostBody: function (data) { if ($(this)[0].locale != undefined ) $('body').setLang ('#table'); },
+        detailFormatter: function (index, row, element) {
+            var expandedRow = row.Id;
+            var clientid = row.Id;
+            $(element).html(
+                '<div class="content"><div id="toolbar'+expandedRow+'"></div>' + 
+                "<table id='detailTable"+expandedRow+"'></table></div>");
+
+            $('#detailTable'+expandedRow).bootstrapTable({
+                toolbar: "#toolbar"+expandedRow,
+                method: 'post', // 服务器数据的请求方式 get or post
+                url: "{{.web_base_url}}/device/getarplist", // 服务器数据的加载地址
+                queryParams: function (params) {
+                    return {
+                        "offset": 0,
+                        "limit": 10,
+                        "type":"",
+                        "client_id":row.Id,
+                        "search": ""
+                    }
+                },
+                search: false,
+                contentType: "application/x-www-form-urlencoded",
+                striped: true, // 设置为true会有隔行变色效果
+                showHeader: false,
+                showColumns: false,
+                showRefresh: false,
+                pagination: false,//分页
+                sidePagination: 'server',//服务器端分页
+                pageNumber: 1,
+                pageList: [5, 10, 20, 50],//分页步进值
+                detailView: false,
+                smartDisplay: false, // 智能显示 pagination 和 cardview 等
+                onExpandRow: function () {$('body').setLang ('.detail-view');},
+                onLoadSuccess:function (data) {$('body').setLang ('.detail-view');},
+                onPostBody: function (data) { if ($(this)[0].locale != undefined ) $('body').setLang ('#table'); },
+                    //表格的列
+                columns: [
+                    {
+                        field: 'Name',//域值
+                        title: '<span langtag="word-Name"></span>',//标题
+                        halign: 'center',
+                        visible: false//false表示不显示
+                    },
+                    {
+                        field: 'MAC',//域值
+                        title: '<span langtag="word-MAC-address"></span>',//标题
+                        halign: 'center',
+                        visible: true,//false表示不显示
+                    },
+                    {
+                        field: 'IP',//域值
+                        title: '<span langtag="word-IP-Address"></span>',//标题
+                        halign: 'center',
+                        visible: true//false表示不显示
+                    },
+                    {
+                        field: 'Openport',//域值
+                        title: '<span langtag="word-service"></span>',//内容
+                        align: 'center',
+                        halign: 'center',
+                        visible: true,//false表示不显示
+                        
+                        formatter: function (value, row, index) {
+                            btn_group=""
+                            if (!value){
+                                btn_group+="-"
+                            }else if (value.length == 0){
+                                btn_group+="-"
+                            }
+                            else{
+                                btn_group = '<div class="btn-group">'
+                                for (i=0;i<value.length;i++){
+                                    if(value[i] == 22){
+                                        name="ssh"
+                                    }else if(value[i] == 80){
+                                        name="http"
+                                    }else if(value[i] == 443){
+                                        name="https"
+                                    }else if(value[i] == 8080){
+                                        name="http"
+                                    }else{
+                                        continue
+                                    }
+                                    //url="/device/addrule?name="+name+"&client_id="+row.Client_id+"&macaddress="+row.MAC+"&target_ipport="+row.IP+":"+value[i]
+                                    //btn_group += "<a onclick=\"gotourl('"+ url +"')\""
+                                    target_ipport=row.IP+":"+value[i]
+                                    btn_group += "<a onclick=\"AddandRun('"+ name +"','" + row.Client_id +"','" + target_ipport +"','" + row.MAC +"')\""
+                                    btn_group += 'class="btn btn-outline btn-primary">'+name+'</a>'                            
+                                }
+                                btn_group += '</div>'
+                            }
+                            return btn_group
+                        }
+                        
+                    },
+                    {
+                        field: 'Online',//域值
+                        title: '<span langtag="word-runstatus"></span>',//内容
+                        align: 'center',
+                        halign: 'center',
+                        visible: true,//false表示不显示
+                        formatter: function (value, row, index) {
+                            if (value) {
+                                return '<span class="badge badge-primary" langtag="word-online"></span>'
+                            } else {
+                                return '<span class="badge badge-badge" langtag="word-offline"></span>'
+                            }
+                        }
+                    },
+                    {
+                        field: 'Client_id',//域值
+                        title: '<span>Magic Packet</span>',//内容
+                        align: 'center',
+                        halign: 'center',
+                        visible: true,//false表示不显示
+                        formatter: function (value, row, index) {
+                            url="/device/addrule?name="+row.Name+"&client_id="+row.Client_id+"&macaddress="+row.MAC+"&target_ipport="+row.IP+":22"
+                            btn_group = '<div class="btn-group">'
+                            if (row.MAC != ""){
+                            btn_group += "<a onclick=\"submitformBg('Send Magic packet?', '{{.web_base_url}}/device/sendwol', {'cid':" + row.Client_id+ ",'macaddr':'" +row.MAC+"'"
+                            btn_group += '})" class="btn btn-outline btn-primary"><i class="fa fa-power-off"></i></a>'
+                            }else{
+                                btn_group += '<span>N</span>'
+                            }
+                            btn_group += "<a onclick=\"submitformBGandRefresh("+expandedRow+",'delete', '{{.web_base_url}}/device/delarpentry', {'mac_addr':'" + row.MAC+"'"
+                            btn_group += '})" class="btn btn-outline btn-danger"><i class="fa fa-trash"></i></a>'
+                            btn_group += "<a onclick=\"gotourl('"+ url +"')\""
+                            btn_group += 'class="btn btn-outline btn-primary"><i class="fa fa-clipboard"></i></a>'                            
+                            btn_group += '</div>'
+                            return btn_group
+                        }
+                    }
+                ]    
+            });//detailFormatter:
+        },
+        //表格的列
+        columns: [
+            {
+                field: 'Id',//域值
+                title: '<span langtag="word-id"></span>',//标题
+                halign: 'center',
+                visible: false//false表示不显示
+            },
+            {
+                field: 'Remark',//域值
+                title: '<span langtag="word-name"></span>',//标题
+                halign: 'center',
+                visible: true//false表示不显示
+            },
+            {
+                field: 'Version',//域值
+                title: '<span langtag="word-version"></span>',//标题
+                halign: 'center',
+                visible: false//false表示不显示
+            },
+            {
+                field: 'VerifyKey',//域值
+                title: '<span>Register Key</span>',//标题
+                halign: 'center',
+                visible: false,//false表示不显示
+                formatter: function (value, row, index) {
+                    if (!row.NoStore) {
+                        return value
+                    } else {
+                        return '<span langtag="word-publicvkey"></span>'
+                    }
+                }
+            },
+            {
+                field: 'Addr',//域值
+                title: '<span langtag="word-address"></span>',//标题
+                halign: 'center',
+                visible: true//false表示不显示
+            },
+            {
+                field: 'InletFlow',//域值
+                title: '<span langtag="word-inletflow"></span>',//标题
+                halign: 'center',
+                visible: false,//false表示不显示
+                sortable: true,//启用排序
+                formatter: function (value, row, index) {
+                    return changeunit(row.Flow.InletFlow)
+                }
+            },
+            {
+                field: 'ExportFlow',//域值
+                title: '<span langtag="word-exportflow"></span>',//标题
+                halign: 'center',
+                visible: false,//false表示不显示
+                sortable: true,//启用排序
+                formatter: function (value, row, index) {
+                    return changeunit(row.Flow.ExportFlow)
+                }
+            },
+            {
+                field: 'IsConnect',//域值
+                title: '<span langtag="word-Traffic"></span>',//内容
+                halign: 'center',
+                visible: false,//false表示不显示
+                formatter: function (value, row, index) {
+                    return changeunit(row.Rate.NowRate) + "/S"
+                }
+            },
+            {
+                field: 'Status',//域值
+                title: '<span langtag="word-status">ssss</span>',//内容
+                align: 'center',
+                halign: 'center',
+                visible: false,//false表示不显示
+                formatter: function (value, row, index) {
+                    if (value) {
+                        return '<span class="badge badge-primary" langtag="word-open">open</span>'
+                    } else {
+                        return '<span class="badge badge-badge" langtag="word-close">close</span>'
+                    }
+                }
+            },
+            {
+                field: 'IsConnect',//域值
+                title: '<span langtag="word-connect"></span>',//内容
+                align: 'center',
+                halign: 'center',
+                visible: true,//false表示不显示
+                formatter: function (value, row, index) {
+                    if (value) {
+                        return '<span class="badge badge-primary" langtag="word-online">online</span>'
+                    } else {
+                        return '<span class="badge badge-badge" langtag="word-offline">offline</span>'
+                    }
+                }
+            },
+            {
+                field: 'option',//域值
+                title: '<span langtag="word-option"></span>',//内容
+                align: 'center',
+                halign: 'center',
+                visible: false,//false表示不显示
+                formatter: function (value, row, index) {
+                    btn_group = '<div class="btn-group">'
+
+                    {{if eq true .isAdmin}}
+                    if (row.Status) {
+                        btn_group += '<a onclick="submitform(\'stop\', \'{{.web_base_url}}/device/changeclientstatus\', {\'id\':' + row.Id
+                        btn_group += ', \'status\': 0})" class="btn btn-outline btn-warning"><i class="fa fa-pause"></i></a>'
+                    } else {
+                        btn_group += '<a onclick="submitform(\'start\', \'{{.web_base_url}}/device/changeclientstatus\', {\'id\':' + row.Id
+                        btn_group += ', \'status\': 1})" class="btn btn-outline btn-primary"><i class="fa fa-play"></i></a>'
+                    }
+                    btn_group += '<a onclick="submitform(\'delete\', \'{{.web_base_url}}/device/delclient\', {\'id\':' + row.Id
+                    btn_group += '})" class="btn btn-outline btn-danger"><i class="fa fa-trash"></i></a>'
+                    {{end}}
+
+                    btn_group += '<a href="{{.web_base_url}}/device/editclient?id=' + row.Id
+                    btn_group += '" class="btn btn-outline btn-success"><i class="fa fa-edit"></i></a></div>'
+                    return btn_group
+                }
+            },
+        ]
+    });
+
+
+</script>

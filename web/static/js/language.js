@@ -95,8 +95,10 @@
 					string = (string[languages['current']] || string[languages['default']] || null);
 					break;
 				default:
-					string = 'Missing language string "' + index + '"';
-					$(item).css('background-color','#ffeeba');
+					//string = 'Missing language string "' + index + '"';
+					string = index.replace("word-","");
+					string = string.replace("-"," ");
+					//$(item).css('background-color','red');
 			}
 			if($.type($(item).attr('placeholder')) == 'undefined') {
 				$(item).text(string);
@@ -183,4 +185,16 @@ function changeunit(limit) {
         return sizeStr.substring(0, index) + sizeStr.substr(index + 3, 2);
     }
     return size;
+}
+function submitformBg(action, url, postdata) {
+    postsubmit = false;
+	if (!confirm(action)) return;
+	$.ajax({
+		type: "POST",
+		url: url,
+		data: postdata,
+		success: function (res) {
+			alert(langreply(res.msg));
+		}
+	});
 }

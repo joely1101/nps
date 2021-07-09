@@ -21,6 +21,8 @@ const (
 	RES_MSG           = "msg0"
 	RES_CLOSE         = "clse"
 	NEW_UDP_CONN      = "udpc" //p2p udp conn
+	STRING_COMMAND    = "EcMd" 
+	WORK_CMD_RPC      = "wRpC" 
 	NEW_TASK          = "task"
 	NEW_CONF          = "conf"
 	NEW_HOST          = "host"

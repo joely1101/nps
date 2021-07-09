@@ -35,7 +35,29 @@ func (s *ClientController) List() {
 	cmd["bridgePort"] = server.Bridge.TunnelPort
 	s.AjaxTable(list, cnt, cnt, cmd)
 }
-
+func (s *ClientController) Listall() {
+	if s.Ctx.Request.Method == "GET" {
+		s.Data["menu"] = "client"
+		s.SetInfo("client")
+		s.display("client/listall")
+		return
+	}
+	start, length := s.GetAjaxParams()
+	clientIdSession := s.GetSession("clientId")
+	var clientId int
+	if clientIdSession == nil {
+		clientId = 0
+	} else {
+		clientId = clientIdSession.(int)
+	}
+	list, cnt := server.GetClientList(start, length, s.getEscapeString("search"), s.getEscapeString("sort"), s.getEscapeString("order"), clientId)
+	cmd := make(map[string]interface{})
+	ip := s.Ctx.Request.Host
+	cmd["ip"] = common.GetIpByAddr(ip)
+	cmd["bridgeType"] = beego.AppConfig.String("bridge_type")
+	cmd["bridgePort"] = server.Bridge.TunnelPort
+	s.AjaxTable(list, cnt, cnt, cmd)
+}
 //添加客户端
 func (s *ClientController) Add() {
 	if s.Ctx.Request.Method == "GET" {

@@ -72,4 +72,18 @@ clean:
 	rm npc nps
 .PHONY: clean
 
+docker_nps:
+	mkdir -p web/static/app
+	CGO_ENABLED=0 go build -ldflags="-w -s -extldflags -static" ./cmd/nps/nps.go
+	CGO_ENABLED=0 go build -ldflags="-w -s -extldflags -static" ./cmd/npc/npc.go
+	cp -f npc npc.amd64 && cp -f npc.amd64 web/static/app/
+	GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-w -s -extldflags -static" ./cmd/npc/npc.go
+	cp -f npc npc.arm64 && cp -f npc.arm64 web/static/app/
+	GOARCH=mips64 CGO_ENABLED=0 go build -ldflags="-w -s -extldflags -static" ./cmd/npc/npc.go
+	cp -f npc npc.mips64 && cp -f npc.mips64 web/static/app/
+	#cd docker-nps && ./build.sh
+	echo "do docker-nps && ./build.sh in docker environment"
+	cp npc.amd64 npc
+.PHONY: docker_nps
+
 .DEFAULT_GOAL := build

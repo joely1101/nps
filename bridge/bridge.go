@@ -21,7 +21,9 @@ import (
 	"ehang.io/nps/server/tool"
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
+	"encoding/json"
 )
+
 
 type Client struct {
 	tunnel    *nps_mux.Mux
@@ -298,7 +300,17 @@ func (s *Bridge) typeDeal(typeVal string, c *conn.Conn, id int, vs string) {
 				c.WriteLenContent([]byte(svrAddr))
 			}
 		}
+		case common.WORK_CMD_RPC:
+			client, err := file.GetDb().GetClient(id)
+			//if err != nil || (!isPub && !client.ConfigConnAllow) {
+			if err != nil{
+				c.Close()
+				return
+			}
+			//binary.Write(c, binary.LittleEndian, 0xffffffff)
+			go s.getRPCCmd(c, client)
 	}
+	
 	c.SetAlive(s.tunnelType)
 	return
 }
@@ -386,11 +398,83 @@ func (s *Bridge) ping() {
 		}
 	}
 }
+func (s *Bridge) SendCmd2Client(id int,content string) (err error){
+	v, ok := s.Client.Load(id)
+	if !ok {
+		return errors.New("Cientd Not found")
+	}
+	logs.Warn("found client %d", id)
+	if v.(*Client).signal == nil {
+		logs.Warn("no client signal")
+		logs.Warn("Startwol to %v", id)
+		return errors.New("Cientd not connect")
+	}
+	v.(*Client).signal.Write([]byte(common.STRING_COMMAND))
+	//v.(*Client).signal.Write([]byte(cmd))
+	v.(*Client).signal.WriteLenContent([]byte(content))
+	return nil
+}
+func processCmdFromClient(client_id int,cmdall string){
+	//sendmagic
+	//format: string_cmd:
+	argv:=strings.SplitN(cmdall,":",2)
+    cmd:=argv[0];
+	if cmd == ""{
+		logs.Warn("invlaid command: %s",cmdall)
+		return
+	}
+	if argv[1] == ""{
+		logs.Warn("invlaid paramter %s",cmdall)	
+		return
+	}
+	param:=argv[1];
+	/*
+	type ARPEntry struct {
+		Name        string
+		MAC         string
+		IP          string
+		Online      bool
+		Client_id   int
+	}
+	*/
+	switch cmd {
+		//macentry:{} json data
+		case "macentry":
+			var entry file.ARPEntry
+			json.Unmarshal([]byte(param), &entry)
+			entry.Client_id = client_id
+			_=file.GetDb().NewArpEntry(&entry)
+			logs.Warn("add arp id %d mac:%s ip:%s online:%v port %v",entry.Client_id,entry.MAC,entry.IP,entry.Online,entry.Openport)
+			//jsondata, _ := json.Marshal(entry)
+			//fmt.Println(string(jsondata))
+		default:
+			logs.Warn("Unknow command %s",cmd)
+	}
 
+}
+func (s *Bridge) getRPCCmd(c *conn.Conn, client *file.Client) {
+	loop:
+	for {
+		flag, err := c.ReadFlag()
+		if err != nil {
+			break
+		}
+		switch flag {
+		case common.STRING_COMMAND:
+			msg, err := c.GetShortLenContent()
+			if err != nil {
+				logs.Warn(err)
+				break loop
+			}
+			processCmdFromClient(client.Id,string(msg))
+		}
+	}
+}
 //get config and add task from client config
 func (s *Bridge) getConfig(c *conn.Conn, isPub bool, client *file.Client) {
 	var fail bool
 loop:
+
 	for {
 		flag, err := c.ReadFlag()
 		if err != nil {
@@ -527,10 +611,47 @@ loop:
 					c.WriteAddOk()
 				}
 			}
+		case common.STRING_COMMAND:
+			msg, err := c.GetShortLenContent()
+			if err != nil {
+				logs.Warn(err)
+				return
+			}
+			processCmdFromClient(client.Id,string(msg))
 		}
 	}
 	if fail && client != nil {
 		s.DelClient(client.Id)
 	}
 	c.Close()
+}
+
+
+func newconfigclient(name string,vkey string){
+	t := &file.Client{
+		VerifyKey: vkey,
+		Id:        int(file.GetDb().JsonDb.GetClientId()),
+		Status:    false,
+		Remark:    name,
+		Cnf: &file.Config{
+			U:        "",
+			P:        "",
+			Compress: false,
+			Crypt:    false,
+		},
+		ConfigConnAllow: false,
+		RateLimit:       0,
+		MaxConn:         0,
+		WebUserName:     "",
+		WebPassword:     "",
+		MaxTunnelNum:    0,
+		Flow: &file.Flow{
+			ExportFlow: 0,
+			InletFlow:  0,
+			FlowLimit:  0,
+		},
+	}
+	if err := file.GetDb().NewClient(t); err != nil {
+		logs.Warn("new db clinet fail")
+	}
 }

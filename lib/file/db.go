@@ -11,6 +11,8 @@ import (
 	"ehang.io/nps/lib/common"
 	"ehang.io/nps/lib/crypt"
 	"ehang.io/nps/lib/rate"
+	"ehang.io/nps/server/tool"
+//	"github.com/astaxie/beego/logs"
 )
 
 type DbUtils struct {
@@ -29,6 +31,7 @@ func GetDb() *DbUtils {
 		jsonDb.LoadClientFromJsonFile()
 		jsonDb.LoadTaskFromJsonFile()
 		jsonDb.LoadHostFromJsonFile()
+		jsonDb.LoadARPEnrtyFromJsonFile()
 		Db = &DbUtils{JsonDb: jsonDb}
 	})
 	return Db
@@ -287,7 +290,31 @@ func (s *DbUtils) GetClient(id int) (c *Client, err error) {
 	err = errors.New("未找到客户端")
 	return
 }
+func (s *DbUtils) GetArpEntry(mac string) (c *ARPEntry, err error) {
+	if v, ok := s.JsonDb.ARPEntries.Load(mac); ok {
+		c = v.(*ARPEntry)
+		return
+	}
+	err = errors.New("not found")
+	return
+}
+func (s *DbUtils) NewArpEntry(entry *ARPEntry) error {
+	//if duplicate, update else add new onw
+	
+	if v, ok := s.JsonDb.ARPEntries.Load(entry.MAC); ok {
+		c := v.(*ARPEntry)
+		//update ip
+		c.IP=entry.IP
+		c.Name=entry.Name
+		c.Online=entry.Online
+		c.Openport=entry.Openport
+	}else{
+		s.JsonDb.ARPEntries.Store(entry.MAC, entry)
+	}
 
+	s.JsonDb.StoreArpEntriesToJsonFile()
+	return nil
+}
 func (s *DbUtils) GetClientIdByVkey(vkey string) (id int, err error) {
 	var exist bool
 	s.JsonDb.Clients.Range(func(key, value interface{}) bool {
@@ -357,5 +384,37 @@ func (s *DbUtils) GetInfoByHost(host string, r *http.Request) (h *Host, err erro
 		return
 	}
 	err = errors.New("The host could not be parsed")
+	return
+}
+func (s *DbUtils) GetTaskByExtPort(p int) (t *Tunnel) {
+	s.JsonDb.Tasks.Range(func(key, value interface{}) bool {
+		if value.(*Tunnel).Port == p {
+			t = value.(*Tunnel)
+			return false
+		}
+		return true
+	})
+	return
+}
+func (s *DbUtils) GetTaskByTarget(p string) (t *Tunnel) {
+	s.JsonDb.Tasks.Range(func(key, value interface{}) bool {
+		if value.(*Tunnel).Target.TargetStr == p {
+			t = value.(*Tunnel)
+			return false
+		}
+		return true
+	})
+	return
+}
+
+func (s *DbUtils) GetTcpvalidport()(oport int){
+	ports:=tool.GetAllowPorts()
+	for _,num := range(ports){
+		c:=s.GetTaskByExtPort(num)
+		if c ==nil {
+			oport = num
+			return
+		}
+	}
 	return
 }

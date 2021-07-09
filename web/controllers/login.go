@@ -27,8 +27,9 @@ func (self *LoginController) Index() {
 	// Try login implicitly, will succeed if it's configured as no-auth(empty username&password).
 	webBaseUrl := beego.AppConfig.String("web_base_url")
 	if self.doLogin("", "", false) {
-		self.Redirect(webBaseUrl+"/index/index", 302)
+		self.Redirect(webBaseUrl+"/device/index", 302)
 	}
+	
 	self.Data["web_base_url"] = webBaseUrl
 	self.Data["register_allow"], _ = beego.AppConfig.Bool("allow_user_register")
 	self.TplName = "login/index.html"

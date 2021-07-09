@@ -181,6 +181,7 @@ type Host struct {
 type Target struct {
 	nowIndex   int
 	TargetStr  string
+	TargetMacStr  string
 	TargetArr  []string
 	LocalProxy bool
 	sync.RWMutex
@@ -207,4 +208,13 @@ func (s *Target) GetRandomTarget() (string, error) {
 	}
 	s.nowIndex++
 	return s.TargetArr[s.nowIndex], nil
+}
+type ARPEntry struct {
+	Name        string
+	MAC         string
+	IP          string
+	Online      bool
+	Client_id   int
+	NoStore     bool
+	Openport    []int
 }

@@ -12,6 +12,7 @@ import (
 
 	"ehang.io/nps/lib/common"
 	"ehang.io/nps/lib/rate"
+	
 )
 
 func NewJsonDb(runPath string) *JsonDb {
@@ -20,6 +21,7 @@ func NewJsonDb(runPath string) *JsonDb {
 		TaskFilePath:   filepath.Join(runPath, "conf", "tasks.json"),
 		HostFilePath:   filepath.Join(runPath, "conf", "hosts.json"),
 		ClientFilePath: filepath.Join(runPath, "conf", "clients.json"),
+		ARPEntryFilePath: filepath.Join(runPath, "conf", "arp.json"),
 	}
 }
 
@@ -28,6 +30,7 @@ type JsonDb struct {
 	Hosts            sync.Map
 	HostsTmp         sync.Map
 	Clients          sync.Map
+	ARPEntries       sync.Map
 	RunPath          string
 	ClientIncreaseId int32  //client increased id
 	TaskIncreaseId   int32  //task increased id
@@ -35,6 +38,7 @@ type JsonDb struct {
 	TaskFilePath     string //task file path
 	HostFilePath     string //host file path
 	ClientFilePath   string //client file path
+	ARPEntryFilePath   string //client file path
 }
 
 func (s *JsonDb) LoadTaskFromJsonFile() {
@@ -53,7 +57,19 @@ func (s *JsonDb) LoadTaskFromJsonFile() {
 		}
 	})
 }
-
+func (s *JsonDb) LoadARPEnrtyFromJsonFile() {
+	loadSyncMapFromFile(s.ARPEntryFilePath, func(v string) {
+		var err error
+		post := new(ARPEntry)
+		if json.Unmarshal([]byte(v), &post) != nil {
+			return
+		}
+		if _, err = s.GetClient(post.Client_id); err != nil {
+			return
+		}
+		s.ARPEntries.Store(post.MAC, post)
+	})
+}
 func (s *JsonDb) LoadClientFromJsonFile() {
 	loadSyncMapFromFile(s.ClientFilePath, func(v string) {
 		post := new(Client)
@@ -116,6 +132,13 @@ func (s *JsonDb) StoreTasksToJsonFile() {
 	taskLock.Unlock()
 }
 
+var ArpLock sync.Mutex
+
+func (s *JsonDb) StoreArpEntriesToJsonFile() {
+	ArpLock.Lock()
+	storeSyncMapToFile(s.ARPEntries, s.ARPEntryFilePath)
+	ArpLock.Unlock()
+}
 var clientLock sync.Mutex
 
 func (s *JsonDb) StoreClientsToJsonFile() {
@@ -170,6 +193,12 @@ func storeSyncMapToFile(m sync.Map, filePath string) {
 			b, err = json.Marshal(obj)
 		case *Client:
 			obj := value.(*Client)
+			if obj.NoStore {
+				return true
+			}
+			b, err = json.Marshal(obj)
+		case *ARPEntry:
+			obj := value.(*ARPEntry)
 			if obj.NoStore {
 				return true
 			}

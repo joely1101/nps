@@ -27,27 +27,22 @@
     <div class="row border-bottom">
         <nav class="navbar navbar-static-top navbar-right" role="navigation" style="margin: 20px 40px">
 <div></div>
-            <h1 style="margin:0px" class="navbar-header font-bold" langtag="application"></h1>
+            <h1 style="margin:0px" class="navbar-header font-bold">JUMPER</h1>
             <span class="btn-group dropdown">
-                <button id="languagemenu" class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fa fa-globe-asia fa-lg"></i><span></span></button>
-                <ul class="dropdown-menu"></ul>
             </span>
         </nav>
     </div>
+
 <div class="loginColumns animated fadeInDown mt-3 px-5">
     <div class="row">
 
         <div class="col-md-6 mt-3">
-            <h3 langtag="info-tagline"></h3>
+            <h3>Management LAN device(behind NAT) by Reverse proxy server</h3>
             <ul class="px-1 text-justify">
-                <li langtag="info-feature1"></li>
+                <li >Easy to USE</li>
+		<li >Support Magic Packet generate(WOL)</li>
                 <li langtag="info-feature2"></li>
-                <li langtag="info-feature3"></li>
-                <li langtag="info-feature4"></li>
                 <li langtag="info-feature5"></li>
-                <li langtag="info-feature6"></li>
-                <li langtag="info-feature7"></li>
-                <li langtag="info-feature8"></li>
                 <li langtag="info-feature9"></li>
             </ul>
         </div>
@@ -72,10 +67,7 @@
     </div>
     <hr/>
     <div class="footer" style="position: unset;">
-        <div class="pull-right">
-            <span langtag="word-readmore"></span> <strong><a href="https://ehang.io/nps" langtag="word-go"></a></strong>
-        </div>
-        <div><strong langtag="word-copyright"></strong> <span langtag="application"></span> &copy; 2018-2020</div>
+	    <div><strong langtag="word-copyright"></strong> <span langtag="application"></span> &copy; 2021</div>
     </div>
 </div>
 
@@ -93,7 +85,7 @@
             data: $("form").serializeArray(),
             success: function (res) {
                 if (res.status) {
-                    window.location.href = "{{.web_base_url}}/index/index"
+                    window.location.href = "{{.web_base_url}}/"
                 } else {
                     alert(res.msg)
                 }

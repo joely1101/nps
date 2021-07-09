@@ -92,3 +92,6 @@ func getSeverStatus() {
 		ServerStatus = append(ServerStatus, m)
 	}
 }
+func GetAllowPorts()(oports []int){
+	return ports
+}

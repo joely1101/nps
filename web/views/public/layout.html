@@ -50,49 +50,17 @@
                     </div>
                     <div class="logo-element" langtag="application"></div>
                 </li>
-                <li class="{{if eq "index" .menu}}active{{end}}">
+                <li class="{{if eq "dashboard" .menu}}active{{end}}">
                     <a href="{{.web_base_url}}/"><i class="fa fa-tachometer-alt fa-lg"></i>
                     <span class="nav-label" langtag="word-dashboard"></span></a>
                 </li>
-                <li class="{{if eq "client" .menu}}active{{end}}">
-                    <a href="{{.web_base_url}}/client/list"><i class="fa fa-desktop fa-lg"></i>
-                    <span class="nav-label" langtag="word-client"></span></a>
+                <li class="{{if eq "device" .menu}}active{{end}}">
+                    <a href="{{.web_base_url}}/device/list"><i class="fa fa-desktop fa-lg"></i>
+                    <span class="nav-label">Devices</span></a>
                 </li>
-                <li class="{{if eq "host" .menu}}active{{end}}">
-                    <a href="{{.web_base_url}}/index/hostlist"><i class="fa fa-globe fa-lg"></i>
-                    <span class="nav-label" langtag="scheme-host"></span></a>
-                </li>
-                <li class="{{if eq "tcp" .menu}}active{{end}}">
-                    <a href="{{.web_base_url}}/index/tcp"><i class="fa fa-retweet fa-lg"></i>
-                    <span class="nav-label" langtag="scheme-tcp"></span></a>
-                </li>
-                <li class="{{if eq "udp" .menu}}active{{end}}">
-                    <a href="{{.web_base_url}}/index/udp"><i class="fa fa-random fa-lg"></i>
-                    <span class="nav-label" langtag="scheme-udp"></span></a>
-                </li>
-                <li class="{{if eq "http" .menu}}active{{end}}">
-                    <a href="{{.web_base_url}}/index/http"><i class="fa fa-server fa-lg"></i>
-                    <span class="nav-label" langtag="scheme-httpproxy"></span></a>
-                </li>
-                <li class="{{if eq "socks5" .menu}}active{{end}}">
-                    <a href="{{.web_base_url}}/index/socks5"><i class="fa fa-layer-group fa-lg"></i>
-                    <span class="nav-label" langtag="scheme-socks5"></span></a>
-                </li>
-                <li class="{{if eq "secret" .menu}}active{{end}}">
-                    <a href="{{.web_base_url}}/index/secret"><i class="fa fa-low-vision fa-lg"></i>
-                    <span class="nav-label" langtag="scheme-secret"></span></a>
-                </li>
-                <li class="{{if eq "p2p" .menu}}active{{end}}">
-                    <a href="{{.web_base_url}}/index/p2p"><i class="fa fa-exchange-alt fa-lg"></i>
-                    <span class="nav-label" langtag="scheme-p2p"></span></a>
-                </li>
-                <li class="{{if eq "file" .menu}}active{{end}}">
-                    <a href="{{.web_base_url}}/index/file"><i class="fa fa-briefcase fa-lg"></i>
-                    <span class="nav-label" langtag="scheme-file"></span></a>
-                </li>
-                <li class="{{if eq "help" .menu}}active{{end}}">
-                    <a href="https://ehang.io/nps/documents" target="_blank"><i class="fa fa-lightbulb fa-lg"></i>
-                    <span class="nav-label" langtag="word-help"></span></a>
+                <li class="{{if eq "arplist" .menu}}active{{end}}">
+                    <a href="{{.web_base_url}}/device/arplist"><i class="fa fa-desktop fa-lg"></i>
+                    <span class="nav-label">ARP List</span></a>
                 </li>
             </ul>
         </div>
@@ -102,18 +70,11 @@
             <nav class="navbar white-bg navbar-fixed-top" role="navigation" style="margin-bottom: 0">
 
                 <div class="navbar-header">
-                    <a class="navbar-minimalize minimalize-styl-2 btn btn-primary " href="#"><i class="fa fa-bars"></i></a>
+                    
                 </div>
                 <ul class="nav navbar-top-links navbar-right">
                     <li>
-                        <span class="m-r-sm text-muted welcome-message"><span langtag="word-welcome"></span>
-                        <a href="https://ehang.io/nps" langtag="application"></a></span>
-                    </li>
-                    <li>
-                        <span class="btn-group dropdown">
-                            <button id="languagemenu" class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fa fa-globe-asia fa-lg"></i><span></span></button>
-                            <ul class="dropdown-menu"></ul>
-                        </span>
+                        <span class="m-r-sm text-muted welcome-message"><span>Welcome to JUMPER</span>
                     </li>
                     <li>
                         <a href="{{.web_base_url}}/login/out">
@@ -127,10 +88,7 @@
     {{.LayoutContent}}
 
         <div class="footer fixed">
-            <div class="float-right">
-                <span langtag="word-readmore"></span> <strong><a href="https://ehang.io/nps" langtag="word-go"></a></strong>
-            </div>
-            <div><strong langtag="word-copyright"></strong> <span langtag="application"></span> &copy; 2018-2020</div>
+		<div><strong>Copyright</strong> <span langtag="application"></span> &copy; 2021</div>
         </div>
     </div>
 </div>

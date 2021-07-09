@@ -22,6 +22,7 @@ import (
 
 var (
 	serverAddr     = flag.String("server", "", "Server addr (ip:port)")
+	scaniface     = flag.String("scaninf", "", "arp scan interface")
 	configPath     = flag.String("config", "", "Configuration file path")
 	verifyKey      = flag.String("vkey", "", "Authentication key")
 	logType        = flag.String("log", "stdout", "Log output mode（stdout|file）")
@@ -232,7 +233,12 @@ func run() {
 	if *verifyKey != "" && *serverAddr != "" && *configPath == "" {
 		go func() {
 			for {
-				client.NewRPClient(*serverAddr, *verifyKey, *connType, *proxyUrl, nil, *disconnectTime).Start()
+				c:=client.NewRPClient(*serverAddr, *verifyKey, *connType, *proxyUrl, nil, *disconnectTime)
+				if scaniface != nil{
+					c.Scaniface=*scaniface
+				}
+				
+				c.Start()
 				logs.Info("Client closed! It will be reconnected in five seconds")
 				time.Sleep(time.Second * 5)
 			}
