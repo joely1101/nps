@@ -464,6 +464,11 @@ func tcpscanThenSend(entry file.ARPEntry,ports portlist,signal *conn.Conn){
 		conn.Close()
 		ports.ports=append(ports.ports,num)
 	}
+	nb:=new(ProbeNetbios)
+	entry.Name=nb.GetnamebyIP(ipstr)
+	if entry.Name == ""{
+		entry.Name = "N/A"
+	}
 	entry.Openport=ports.ports
 	jsondata, _ := json.Marshal(entry)
 	signal.Write([]byte(common.STRING_COMMAND))
@@ -489,6 +494,7 @@ func arpNotification(arpChannel chan arp.MACEntry,signal    *conn.Conn,lan net.I
 					Entry := file.ARPEntry {
 						MAC : MACEntry.MAC.String(),
 						IP  : MACEntry.IP().String(),
+						Name  : "N/A",
 						Online : MACEntry.Online}
 					go tcpscanThenSend(Entry,v,signal)
 					continue
@@ -502,6 +508,7 @@ func arpNotification(arpChannel chan arp.MACEntry,signal    *conn.Conn,lan net.I
 			Entry := file.ARPEntry {
 				MAC : MACEntry.MAC.String(),
                 IP  : MACEntry.IP().String(),
+				Name  : "N/A",
 				Online : MACEntry.Online}
 			
 			jsondata, _ := json.Marshal(Entry)
