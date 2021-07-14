@@ -128,6 +128,7 @@ func (self *LoginController) Register() {
 			WebUserName: self.GetString("username"),
 			WebPassword: self.GetString("password"),
 			Flow:        &file.Flow{},
+			Remark:      self.GetString("username"),
 		}
 		if err := file.GetDb().NewClient(t); err != nil {
 			self.Data["json"] = map[string]interface{}{"status": 0, "msg": err.Error()}
