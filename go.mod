@@ -11,14 +11,16 @@ require (
 	github.com/ccding/go-stun v0.0.0-20180726100737-be486d185f3d
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/golang/snappy v0.0.3
+	github.com/google/gopacket v1.1.19
 	github.com/hooklift/assert v0.0.0-20170704181755-9d1defd6d214 // indirect
-	github.com/joely1101/arp v1.4.1-0.20210709045648-543f943da641 // indirect
-	github.com/joely1101/gowol v0.0.0-20180926075039-797e4d01634c // indirect
+	github.com/joely1101/arp v1.4.1-0.20210709045648-543f943da641
+	github.com/joely1101/gowol v0.0.0-20180926075039-797e4d01634c
 	github.com/kardianos/service v1.2.0
 	github.com/klauspost/cpuid v1.3.1 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.6 // indirect
 	github.com/klauspost/pgzip v1.2.1 // indirect
 	github.com/klauspost/reedsolomon v1.9.12 // indirect
+	github.com/libp2p/go-reuseport v0.0.2
 	github.com/linde12/gowol v0.0.0-20180926075039-797e4d01634c // indirect
 	github.com/panjf2000/ants/v2 v2.4.2
 	github.com/pkg/errors v0.9.1
