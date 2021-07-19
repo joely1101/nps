@@ -390,7 +390,12 @@ func parsePacket(data []byte) *layers.DHCPv4 {
 	return dhcpLayer.(*layers.DHCPv4)
 }
 
+var hostname_monitor_running bool = false
+
 func hostname_monitor() {
+	if hostname_monitor_running {
+		return
+	}
 	logs.Warn("starting dhcp packet monitor")
 	pc, err := reuse.ListenPacket("udp", ":67")
 	if err != nil {
@@ -400,9 +405,10 @@ func hostname_monitor() {
 	//dhcphostname = make(map[string]string)
 	buffer := make([]byte, 1600)
 	defer pc.Close()
+	hostname_monitor_running = true
 	for {
 		if CloseClient {
-			break
+			return
 		}
 		hostname := ""
 		n, addr, err := pc.ReadFrom(buffer)
@@ -430,6 +436,7 @@ func hostname_monitor() {
 		}
 		fmt.Printf("packet-received: bytes=%d from=%s\n", n, addr.String())
 	}
+	hostname_monitor_running = false
 }
 
 //var arpChannel chan arp.MACEntry
