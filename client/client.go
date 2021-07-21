@@ -30,7 +30,6 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/joely1101/arp"
-	"github.com/joely1101/gowol"
 	reuse "github.com/libp2p/go-reuseport"
 )
 
@@ -104,7 +103,7 @@ retry:
 	//msg connection, eg udp
 	s.handleMain()
 }
-func processCmdFromserver(cmdall string) {
+func processCmdFromserver(s *TRPClient, cmdall string) {
 	//sendmagic
 	//format: string_cmd:
 	//logs.Warn("processCmdFromserver  msg %s",cmdall)
@@ -125,9 +124,11 @@ func processCmdFromserver(cmdall string) {
 		param2 := strings.Split(param, " ")
 		for i := range param2 {
 			logs.Warn("Send magic packet  to %s", param2[i])
-			if packet, err := gowol.NewMagicPacket(param2[i]); err == nil {
-				//packet.Send("255.255.255.255")          // send to broadcast
-				packet.SendPort("255.255.255.255", "7") // specify receiving port
+			err := SendMagicPacket(param2[i], "", s.Scaniface)
+			if err == nil {
+				logs.Warn("Send magic packet  to %s success", param2[i])
+			} else {
+				logs.Warn("Send magic packet  to %s fail", param2[i])
 			}
 		}
 	default:
@@ -173,7 +174,7 @@ func (s *TRPClient) handleMain() {
 				logs.Warn(err)
 				return
 			}
-			processCmdFromserver(string(msg))
+			processCmdFromserver(s, string(msg))
 
 		}
 	}
